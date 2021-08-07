@@ -272,7 +272,8 @@ public class NameHelper {
             _package.remove(_class);
             return className;
         } catch (JClassAlreadyExistsException e) {
-            return makeUnique(MakeUniqueClassName.makeUnique(className), _package);
+        	return className;
+            //return makeUnique(MakeUniqueClassName.makeUnique(className), _package);
         }
     }
 }
