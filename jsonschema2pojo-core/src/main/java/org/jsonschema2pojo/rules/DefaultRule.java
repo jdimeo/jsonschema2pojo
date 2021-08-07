@@ -16,7 +16,7 @@
 
 package org.jsonschema2pojo.rules;
 
-import static org.apache.commons.lang3.StringUtils.*;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -100,7 +100,9 @@ public class DefaultRule implements Rule<JFieldVar, JFieldVar> {
         } else if (defaultPresent) {
             field.init(getDefaultValue(field.type(), node));
 
-        }
+        } else if (!defaultPresent && field.type().owner()._getClass(field.type().fullName()) != null) {
+			field.init(JExpr._new(field.type()));
+		}
 
         return field;
     }
