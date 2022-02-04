@@ -89,7 +89,7 @@ public class DefaultRule implements Rule<JFieldVar, JFieldVar> {
 
         if (defaultPresent && !field.type().isPrimitive() && node.isNull()) {
             field.init(JExpr._null());
-
+            
         } else if (fieldType.startsWith(List.class.getName())) {
             field.init(getDefaultList(field.type(), node));
 
@@ -99,8 +99,11 @@ public class DefaultRule implements Rule<JFieldVar, JFieldVar> {
             field.init(getDefaultValue(field.type(), node));
         } else if (defaultPresent) {
             field.init(getDefaultValue(field.type(), node));
-
-        }
+        } else if (!defaultPresent
+        	&& field.type().owner()._getClass(field.type().fullName()) != null
+        	&& ruleFactory.getGenerationConfig().isInitializeObjects()) {
+			field.init(JExpr._new(field.type()));
+		}
 
         return field;
     }

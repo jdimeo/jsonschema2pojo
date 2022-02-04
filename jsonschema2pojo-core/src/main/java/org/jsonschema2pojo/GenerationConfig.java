@@ -347,6 +347,13 @@ public interface GenerationConfig {
    * @return Whether to initialize collections with empty instance or null.
    */
   boolean isInitializeCollections();
+  
+  /**
+   * Gets the 'initializeObjects' configuration option.
+   *
+   * @return Whether to initialize objects with empty instance or null.
+   */
+  boolean isInitializeObjects();
 
   /**
    * Gets the 'getClassNamePrefix' configuration option.

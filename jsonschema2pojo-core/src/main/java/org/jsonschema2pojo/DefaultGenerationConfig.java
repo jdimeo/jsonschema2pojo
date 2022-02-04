@@ -257,6 +257,11 @@ public class DefaultGenerationConfig implements GenerationConfig {
     public boolean isInitializeCollections() {
         return true;
     }
+    
+    @Override
+    public boolean isInitializeObjects() {
+        return false;
+    }
 
     @Override
     public String getClassNamePrefix() {

@@ -138,6 +138,8 @@ public class Jsonschema2PojoTask extends Task implements GenerationConfig {
     private boolean serializable = false;
 
     private boolean initializeCollections = true;
+    
+    private boolean initializeObjects = false;
 
     private String classNamePrefix = "";
 
@@ -1164,6 +1166,11 @@ public class Jsonschema2PojoTask extends Task implements GenerationConfig {
     @Override
     public boolean isInitializeCollections() {
         return initializeCollections;
+    }
+    
+    @Override
+    public boolean isInitializeObjects() {
+        return initializeObjects;
     }
 
     @Override

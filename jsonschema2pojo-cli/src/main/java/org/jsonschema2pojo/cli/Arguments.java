@@ -176,6 +176,9 @@ public class Arguments implements GenerationConfig {
 
     @Parameter(names = { "-N", "--null-collections" }, description = "Initialize Set and List fields to null instead of an empty collection.")
     private boolean nullCollections = false;
+    
+    @Parameter(names = { "-O", "--init-objects" }, description = "Initialize object fields to empty object instead of null.")
+    private boolean initObjects = false;
 
     @Parameter(names = { "-y", "--class-prefix" }, description = "Prefix for generated class.")
     private String classNamePrefix = "";
@@ -453,6 +456,11 @@ public class Arguments implements GenerationConfig {
     @Override
     public boolean isInitializeCollections() {
         return !nullCollections;
+    }
+    
+    @Override
+    public boolean isInitializeObjects() {
+    	return initObjects;
     }
 
     @Override
