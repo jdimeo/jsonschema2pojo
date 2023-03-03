@@ -16,22 +16,29 @@
 
 package org.jsonschema2pojo.rules;
 
-import static java.util.Arrays.*;
-import static org.apache.commons.lang3.StringUtils.*;
-import static org.jsonschema2pojo.rules.PrimitiveTypes.*;
-import static org.jsonschema2pojo.util.TypeUtil.*;
+import static java.util.Arrays.asList;
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.apache.commons.lang3.StringUtils.containsOnly;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.join;
+import static org.apache.commons.lang3.StringUtils.splitByCharacterTypeCamelCase;
+import static org.apache.commons.lang3.StringUtils.upperCase;
+import static org.jsonschema2pojo.rules.PrimitiveTypes.isPrimitive;
+import static org.jsonschema2pojo.util.TypeUtil.resolveType;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.jsonschema2pojo.Annotator;
 import org.jsonschema2pojo.RuleLogger;
 import org.jsonschema2pojo.Schema;
-import org.jsonschema2pojo.exception.ClassAlreadyExistsException;
 import org.jsonschema2pojo.exception.GenerationException;
 import org.jsonschema2pojo.model.EnumDefinition;
 import org.jsonschema2pojo.model.EnumDefinitionExtensionType;
@@ -111,14 +118,7 @@ public class EnumRule implements Rule<JClassContainer, JType> {
             return type;
         }
 
-        JDefinedClass _enum;
-        try {
-            _enum = createEnum(node, nodeName, container);
-        } catch (ClassAlreadyExistsException e) {
-            ruleFactory.getLogger().error("Could not create enum.", e);
-            return e.getExistingClass();
-        }
-
+        JDefinedClass _enum = createEnum(node, nodeName, container);
         schema.setJavaTypeIfEmpty(_enum);
 
         // Add JavaDocs
@@ -170,19 +170,32 @@ public class EnumRule implements Rule<JClassContainer, JType> {
         return _enum;
     }
 
-    protected void addEnumConstants(EnumDefinition enumDefinition, JDefinedClass _enum, Schema schema) {
+    @SuppressWarnings("unchecked")
+	protected void addEnumConstants(EnumDefinition enumDefinition, JDefinedClass _enum, Schema schema) {
 
         JType type = enumDefinition.getBackingType();
 
         String nodeName = enumDefinition.getNodeName();
         JsonNode parentNode = enumDefinition.getEnumNode();
+        
+        Map<String, JEnumConstant> enumConstantsByName;
+        try {
+        	enumConstantsByName = (Map<String, JEnumConstant>)	FieldUtils.readField(_enum, "enumConstantsByName", true);
+		} catch (IllegalAccessException e) {
+			ruleFactory.getLogger().info("Error accessing enum constants: " + e.getMessage());
+			enumConstantsByName = Collections.emptyMap();
+		}
 
         for(EnumValueDefinition enumValueDefinition : enumDefinition.values()) {
-
+        	boolean isNew = !enumConstantsByName.containsKey(enumValueDefinition.getName());
+        	
             JEnumConstant constant = _enum.enumConstant(enumValueDefinition.getName());
+            
             String value = enumValueDefinition.getValue();
-            constant.arg(DefaultRule.getDefaultValue(type, value));
-
+            if (isNew) {
+            	constant.arg(DefaultRule.getDefaultValue(type, value));	
+            }
+            
             Annotator annotator = ruleFactory.getAnnotator();
             annotator.enumConstant(_enum, constant, value);
 
@@ -330,8 +343,7 @@ public class EnumRule implements Rule<JClassContainer, JType> {
         return new EnumDefinition(nodeName, enumNode, type, enumValues, EnumDefinitionExtensionType.JAVA_ENUMS);
     }
 
-    protected JDefinedClass createEnum(JsonNode node, String nodeName, JClassContainer container) throws ClassAlreadyExistsException {
-
+    protected JDefinedClass createEnum(JsonNode node, String nodeName, JClassContainer container) {
         try {
             if (node.has("javaType")) {
                 String fqn = node.get("javaType").asText();
@@ -344,42 +356,38 @@ public class EnumRule implements Rule<JClassContainer, JType> {
                     fqn = container.getPackage().name() + "." + fqn;
                 }
 
-                try {
-                    Class<?> existingClass = Thread.currentThread().getContextClassLoader().loadClass(fqn);
-                    throw new ClassAlreadyExistsException(container.owner().ref(existingClass));
-                } catch (ClassNotFoundException e) {
-                    JDefinedClass enumClass = container.owner()._class(fqn, ClassType.ENUM);
-                    ruleFactory.getLogger().debug("Adding " + enumClass.fullName());
-                    return enumClass;
-                }
+               	JDefinedClass enumClass = container.owner()._class(fqn, ClassType.ENUM);
+                ruleFactory.getLogger().debug("Adding " + enumClass.fullName());
+              	return enumClass;
             } else {
-                try {
-                    JDefinedClass enumClass = container._class(JMod.PUBLIC, getEnumName(nodeName, node, container), ClassType.ENUM);
-                    ruleFactory.getLogger().debug("Adding " + enumClass.fullName());
-                    return enumClass;
-                } catch (JClassAlreadyExistsException e) {
-                    throw new GenerationException(e);
-                }
+                JDefinedClass enumClass = container._class(JMod.PUBLIC, getEnumName(nodeName, node, container), ClassType.ENUM);
+                ruleFactory.getLogger().debug("Adding " + enumClass.fullName());
+                return enumClass;
             }
         } catch (JClassAlreadyExistsException e) {
-            throw new ClassAlreadyExistsException(e.getExistingClass());
+        	return e.getExistingClass();
         }
     }
 
     protected JFieldVar addConstructorAndFields(EnumDefinition enumDefinition, JDefinedClass _enum) {
+    	try {
+    		JType backingType = enumDefinition.getBackingType();
+    		JFieldVar valueField = _enum.field(JMod.PRIVATE | JMod.FINAL, backingType, VALUE_FIELD_NAME);
 
-        JType backingType = enumDefinition.getBackingType();
-        JFieldVar valueField = _enum.field(JMod.PRIVATE | JMod.FINAL, backingType, VALUE_FIELD_NAME);
-
-        JMethod constructor = _enum.constructor(JMod.NONE);
-        JVar valueParam = constructor.param(backingType, VALUE_FIELD_NAME);
-        JBlock body = constructor.body();
-        body.assign(JExpr._this().ref(valueField), valueParam);
-
-        return valueField;
+    		JMethod constructor = _enum.constructor(JMod.NONE);
+    		JVar valueParam = constructor.param(backingType, VALUE_FIELD_NAME);
+    		JBlock body = constructor.body();
+    		body.assign(JExpr._this().ref(valueField), valueParam);
+    		
+            return valueField;
+    	} catch (IllegalArgumentException e) {
+    		// Happens with an existing enum
+    		return _enum.fields().get(VALUE_FIELD_NAME);
+    	}
     }
 
     protected void addFactoryMethod(EnumDefinition enumDefinition, JDefinedClass _enum) {
+    	if (exists(_enum, "fromValue")) { return; }
 
         JType backingType = enumDefinition.getBackingType();
         JFieldVar quickLookupMap = addQuickLookupMap(enumDefinition, _enum);
@@ -405,37 +413,58 @@ public class EnumRule implements Rule<JClassContainer, JType> {
         _if._then()._throw(illegalArgumentException);
         _if._else()._return(constant);
 
-        ruleFactory.getAnnotator().enumCreatorMethod(_enum, fromValue);
+        ruleFactory.getAnnotator().enumCreatorMethod(_enum, fromValue);	
+    }
+    
+    private static boolean exists(JDefinedClass cls, String methodName) {
+    	for (JMethod m : cls.methods()) {
+    		if (m.name().equals(methodName)) { return true; }
+    	}
+    	return false;
+    }
+    
+    private static boolean exists(List<EnumValueDefinition> values, String value) {
+    	for (EnumValueDefinition v : values) {
+    		if (v.getValue().equals(value)) { return true; }
+    	}
+    	return false;
     }
 
     protected void addFieldAccessors(JDefinedClass _enum, JFieldVar valueField) {
+    	if (exists(_enum, "value")) { return; }
+    	
         JMethod fromValue = _enum.method(JMod.PUBLIC, valueField.type(), "value");
 
         JBlock body = fromValue.body();
         body._return(JExpr._this().ref(valueField));
-
+        
         ruleFactory.getAnnotator().enumValueMethod(_enum, fromValue);
     }
 
     protected JFieldVar addQuickLookupMap(EnumDefinition enumDefinition, JDefinedClass _enum) {
+    	try {
+    		JType backingType = enumDefinition.getBackingType();
 
-        JType backingType = enumDefinition.getBackingType();
-
-        JClass lookupType = _enum.owner().ref(Map.class).narrow(backingType.boxify(), _enum);
-        JFieldVar lookupMap = _enum.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, lookupType, "CONSTANTS");
-
-        JClass lookupImplType = _enum.owner().ref(HashMap.class).narrow(backingType.boxify(), _enum);
-        lookupMap.init(JExpr._new(lookupImplType));
-
-        JForEach forEach = _enum.init().forEach(_enum, "c", JExpr.invoke("values"));
-        JInvocation put = forEach.body().invoke(lookupMap, "put");
-        put.arg(forEach.var().ref("value"));
-        put.arg(forEach.var());
-
-        return lookupMap;
+	        JClass lookupType = _enum.owner().ref(Map.class).narrow(backingType.boxify(), _enum);
+	        JFieldVar lookupMap = _enum.field(JMod.PRIVATE | JMod.STATIC | JMod.FINAL, lookupType, "CONSTANTS");
+	
+	        JClass lookupImplType = _enum.owner().ref(HashMap.class).narrow(backingType.boxify(), _enum);
+	        lookupMap.init(JExpr._new(lookupImplType));
+	
+	        JForEach forEach = _enum.init().forEach(_enum, "c", JExpr.invoke("values"));
+	        JInvocation put = forEach.body().invoke(lookupMap, "put");
+	        put.arg(forEach.var().ref("value"));
+	        put.arg(forEach.var());
+	        return lookupMap;
+    	} catch (IllegalArgumentException e) {
+    		// Happens with an existing enum
+    		return _enum.fields().get("CONSTANTS");
+    	}
     }
 
     protected void addToString(JDefinedClass _enum, JFieldVar valueField) {
+    	if (exists(_enum, "toString")) { return; }
+    	
         JMethod toString = _enum.method(JMod.PUBLIC, String.class, "toString");
         JBlock body = toString.body();
 

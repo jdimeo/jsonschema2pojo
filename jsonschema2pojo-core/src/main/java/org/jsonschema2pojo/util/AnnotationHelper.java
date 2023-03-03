@@ -32,6 +32,11 @@ public class AnnotationHelper {
         try {
             Class.forName(annotationClassName);
             JClass annotationClass = jclass.owner().ref(annotationClassName);
+            
+            for (JAnnotationUse a : jclass.annotations()) {
+            	if (a.getAnnotationClass().equals(annotationClass)) { return false; }
+            }
+            
             JAnnotationUse generated = jclass.annotate(annotationClass);
             generated.param("value", GENERATOR_NAME);
             return true;
