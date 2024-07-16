@@ -65,6 +65,7 @@ import com.sun.codemodel.JVar;
  */
 public class ObjectRule implements Rule<JPackage, JType> {
 	public static final String ABSTRACT_PROPERTY = "javaAbstract";
+	public static final String INTERFACES_PROPERTY = "javaInterfaces";
 	
     private final RuleFactory ruleFactory;
     private final ReflectionHelper reflectionHelper;
@@ -120,8 +121,8 @@ public class ObjectRule implements Rule<JPackage, JType> {
 
         ruleFactory.getPropertiesRule().apply(nodeName, node.get("properties"), node, jclass, schema);
 
-        if (node.has("javaInterfaces")) {
-            addInterfaces(jclass, node.get("javaInterfaces"));
+        if (node.has(INTERFACES_PROPERTY)) {
+            addInterfaces(jclass, node.get(INTERFACES_PROPERTY));
         }
 
         ruleFactory.getAdditionalPropertiesRule().apply(nodeName, node.get("additionalProperties"), node, jclass, schema);
