@@ -63,7 +63,8 @@ import com.sun.codemodel.JVar;
  *      /tools.ietf.org/html/draft-zyp-json-schema-03#section-5.1</a>
  */
 public class ObjectRule implements Rule<JPackage, JType> {
-
+	public static final String ABSTRACT_PROPERTY = "javaAbstract";
+	
     private final RuleFactory ruleFactory;
     private final ReflectionHelper reflectionHelper;
     private final ParcelableHelper parcelableHelper;
@@ -83,7 +84,6 @@ public class ObjectRule implements Rule<JPackage, JType> {
      */
     @Override
     public JType apply(String nodeName, JsonNode node, JsonNode parent, JPackage _package, Schema schema) {
-
         JType superType = reflectionHelper.getSuperType(nodeName, node, _package, schema);
         if (superType.isPrimitive() || reflectionHelper.isFinal(superType)) {
             return superType;
@@ -200,6 +200,14 @@ public class ObjectRule implements Rule<JPackage, JType> {
         JDefinedClass newType;
 
         Annotator annotator = ruleFactory.getAnnotator();
+        
+        int mods = JMod.PUBLIC;
+        for (Iterator<String> properties = node.fieldNames(); properties.hasNext(); ) {
+            JsonNode child = node.get(properties.next());
+            if (child != null && child.has(ABSTRACT_PROPERTY) && child.get(ABSTRACT_PROPERTY).asBoolean(false)) {
+            	mods |= JMod.ABSTRACT;
+            }
+        }
 
         try {
             if (node.has("existingJavaType")) {
@@ -237,17 +245,17 @@ public class ObjectRule implements Rule<JPackage, JType> {
                 }
 
                 if (usePolymorphicDeserialization) {
-                    newType = _package.owner()._class(JMod.PUBLIC, fqn, ClassType.CLASS);
+                    newType = _package.owner()._class(mods, fqn, ClassType.CLASS);
                 } else {
-                    newType = _package.owner()._class(fqn);
+                    newType = _package.owner()._class(mods, fqn, ClassType.CLASS);
                 }
                 ruleFactory.getLogger().debug("Adding " + newType.fullName());
             } else {
                 final String className = ruleFactory.getNameHelper().getUniqueClassName(nodeName, node, _package);
                 if (usePolymorphicDeserialization) {
-                    newType = _package._class(JMod.PUBLIC, className, ClassType.CLASS);
+                    newType = _package._class(mods, className, ClassType.CLASS);
                 } else {
-                    newType = _package._class(className);
+                    newType = _package._class(mods, className);
                 }
                 ruleFactory.getLogger().debug("Adding " + newType.fullName());
             }
