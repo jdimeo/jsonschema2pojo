@@ -10,14 +10,14 @@
 
     <groupId>org.jsonschema2pojo</groupId>
     <artifactId>jsonschema2pojo</artifactId>
-    <version>1.2.1-enum-fixes</version>
+    <version>1.2.1-abstract</version>
 
     <packaging>pom</packaging>
     <name>jsonschema2pojo</name>
     <description>Generate DTO style Java classes from JSON Schema documents</description>
     <url>https://github.com/joelittlejohn/jsonschema2pojo</url>
     
-    <distributionManagement>
+	<distributionManagement>
   		<repository>
     		<id>gitlab-maven</id>
     		<url>https://gitlab.com/api/v4/projects/29651485/packages/maven</url>
