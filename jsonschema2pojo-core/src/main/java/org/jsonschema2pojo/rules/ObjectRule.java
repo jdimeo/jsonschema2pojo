@@ -377,7 +377,7 @@ public class ObjectRule implements Rule<JPackage, JType> {
         toString.annotate(Override.class);
     }
 
-    private void addHashCode(JDefinedClass jclass, JsonNode node) {
+    protected void addHashCode(JDefinedClass jclass, JsonNode node) {
         Map<String, JFieldVar> fields = removeFieldsExcludedFromEqualsAndHashCode(jclass.fields(), node);
 
         JMethod hashCode = jclass.method(JMod.PUBLIC, int.class, "hashCode");
@@ -463,7 +463,7 @@ public class ObjectRule implements Rule<JPackage, JType> {
         return filteredFields;
     }
 
-    private void addEquals(JDefinedClass jclass, JsonNode node) {
+    protected void addEquals(JDefinedClass jclass, JsonNode node) {
         Map<String, JFieldVar> fields = removeFieldsExcludedFromEqualsAndHashCode(jclass.fields(), node);
 
         JMethod equals = jclass.method(JMod.PUBLIC, boolean.class, "equals");
