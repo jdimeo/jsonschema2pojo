@@ -16,9 +16,11 @@
 
 package org.jsonschema2pojo.rules;
 
-import static org.apache.commons.lang3.StringUtils.*;
-import static org.jsonschema2pojo.rules.PrimitiveTypes.*;
-import static org.jsonschema2pojo.util.TypeUtil.*;
+import static org.apache.commons.lang3.StringUtils.substringAfter;
+import static org.apache.commons.lang3.StringUtils.substringBefore;
+import static org.jsonschema2pojo.rules.PrimitiveTypes.isPrimitive;
+import static org.jsonschema2pojo.rules.PrimitiveTypes.primitiveType;
+import static org.jsonschema2pojo.util.TypeUtil.resolveType;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -27,7 +29,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import org.jsonschema2pojo.AnnotationStyle;
 import org.jsonschema2pojo.Annotator;
 import org.jsonschema2pojo.Schema;
 import org.jsonschema2pojo.exception.ClassAlreadyExistsException;
@@ -201,16 +202,7 @@ public class ObjectRule implements Rule<JPackage, JType> {
 
         Annotator annotator = ruleFactory.getAnnotator();
         
-        int mods = JMod.PUBLIC;
-        
-        if (node.has("properties")) {
-        	for (JsonNode prop : node.get("properties")) {
-        		if (prop.has(ABSTRACT_PROPERTY) && prop.get(ABSTRACT_PROPERTY).asBoolean(false)) {
-                	mods |= JMod.ABSTRACT;
-                	break;
-                }
-        	}
-        }
+        int mods = getClassMods(node);
 
         try {
             if (node.has("existingJavaType")) {
@@ -270,7 +262,10 @@ public class ObjectRule implements Rule<JPackage, JType> {
         annotator.propertyInclusion(newType, node);
 
         return newType;
-
+    }
+    
+    protected int getClassMods(JsonNode node) {
+    	return JMod.PUBLIC;
     }
 
     private void addToString(JDefinedClass jclass) {
@@ -531,22 +526,10 @@ public class ObjectRule implements Rule<JPackage, JType> {
         equals.annotate(Override.class);
     }
 
-    private void addInterfaces(JDefinedClass jclass, JsonNode javaInterfaces) {
+    private static void addInterfaces(JDefinedClass jclass, JsonNode javaInterfaces) {
         for (JsonNode i : javaInterfaces) {
             jclass._implements(resolveType(jclass._package(), i.asText()));
         }
-    }
-
-    private boolean usesPolymorphicDeserialization(JsonNode node) {
-
-        AnnotationStyle annotationStyle = ruleFactory.getGenerationConfig().getAnnotationStyle();
-
-        if (annotationStyle == AnnotationStyle.JACKSON
-                || annotationStyle == AnnotationStyle.JACKSON2) {
-            return ruleFactory.getGenerationConfig().isIncludeTypeInfo() || node.has("deserializationClassProperty");
-        }
-
-        return false;
     }
 
 }
