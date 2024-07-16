@@ -202,11 +202,14 @@ public class ObjectRule implements Rule<JPackage, JType> {
         Annotator annotator = ruleFactory.getAnnotator();
         
         int mods = JMod.PUBLIC;
-        for (Iterator<String> properties = node.fieldNames(); properties.hasNext(); ) {
-            JsonNode child = node.get(properties.next());
-            if (child != null && child.has(ABSTRACT_PROPERTY) && child.get(ABSTRACT_PROPERTY).asBoolean(false)) {
-            	mods |= JMod.ABSTRACT;
-            }
+        
+        if (node.has("properties")) {
+        	for (JsonNode prop : node.get("properties")) {
+        		if (prop.has(ABSTRACT_PROPERTY) && prop.get(ABSTRACT_PROPERTY).asBoolean(false)) {
+                	mods |= JMod.ABSTRACT;
+                	break;
+                }
+        	}
         }
 
         try {
