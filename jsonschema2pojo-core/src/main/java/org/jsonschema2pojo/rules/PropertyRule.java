@@ -157,15 +157,15 @@ public class PropertyRule implements Rule<JDefinedClass, JDefinedClass> {
         return hasEnumerated(schema, type, nodeName) || hasFlag(node, type);
     }
 
-    private boolean isRequired(String nodeName, JsonNode node, Schema schema) {
+    protected boolean isRequired(String nodeName, JsonNode node, Schema schema) {
         return isDeclaredAs("required", nodeName, node, schema);
     }
 
-    private boolean useOptional(String nodeName, JsonNode node, Schema schema) {
+    protected boolean useOptional(String nodeName, JsonNode node, Schema schema) {
         return isDeclaredAs("javaOptional", nodeName, node, schema);
     }
 
-    private void propertyAnnotations(String nodeName, JsonNode node, Schema schema, JDocCommentable generatedJavaConstruct) {
+    protected void propertyAnnotations(String nodeName, JsonNode node, Schema schema, JDocCommentable generatedJavaConstruct) {
         if (node.has("title")) {
             ruleFactory.getTitleRule().apply(nodeName, node.get("title"), node, generatedJavaConstruct, schema);
         }
@@ -216,7 +216,15 @@ public class PropertyRule implements Rule<JDefinedClass, JDefinedClass> {
         }
     }
 
-    private JType getReturnType(final JDefinedClass c, final JFieldVar field, final boolean required, final boolean usesOptional) {
+    private boolean isObject(JsonNode node) {
+        return node.path("type").asText().equals("object");
+    }
+
+    private boolean isArray(JsonNode node) {
+        return node.path("type").asText().equals("array");
+    }
+
+    protected JType getReturnType(final JDefinedClass c, final JFieldVar field, final boolean required, final boolean usesOptional) {
         JType returnType = field.type();
         if (ruleFactory.getGenerationConfig().isUseOptionalForGetters() || usesOptional) {
             if (!required && field.type().isReference()) {
@@ -227,7 +235,7 @@ public class PropertyRule implements Rule<JDefinedClass, JDefinedClass> {
         return returnType;
     }
 
-    private JMethod addGetter(JDefinedClass c, JFieldVar field, String jsonPropertyName, JsonNode node, boolean isRequired, boolean usesOptional) {
+    protected JMethod addGetter(JDefinedClass c, JFieldVar field, String jsonPropertyName, JsonNode node, boolean isRequired, boolean usesOptional) {
 
         JType type = getReturnType(c, field, isRequired, usesOptional);
 
@@ -244,7 +252,7 @@ public class PropertyRule implements Rule<JDefinedClass, JDefinedClass> {
         return getter;
     }
 
-    private JMethod addSetter(JDefinedClass c, JFieldVar field, String jsonPropertyName, JsonNode node) {
+    protected JMethod addSetter(JDefinedClass c, JFieldVar field, String jsonPropertyName, JsonNode node) {
         JMethod setter = c.method(JMod.PUBLIC, void.class, getSetterName(jsonPropertyName, node));
 
         JVar param = setter.param(field.type(), field.name());
