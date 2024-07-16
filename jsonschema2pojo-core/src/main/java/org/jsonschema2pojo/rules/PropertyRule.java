@@ -41,7 +41,7 @@ import org.apache.commons.lang.StringUtils;
  */
 public class PropertyRule implements Rule<JDefinedClass, JDefinedClass> {
 
-    private final RuleFactory ruleFactory;
+    protected final RuleFactory ruleFactory;
 
     protected PropertyRule(RuleFactory ruleFactory) {
         this.ruleFactory = ruleFactory;

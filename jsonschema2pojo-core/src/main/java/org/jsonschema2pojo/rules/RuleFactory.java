@@ -43,7 +43,7 @@ public class RuleFactory {
 
     private RuleLogger logger;
     private NameHelper nameHelper;
-    private ReflectionHelper reflectionHelper;
+    protected ReflectionHelper reflectionHelper;
     private GenerationConfig generationConfig;
     private Annotator annotator;
     private SchemaStore schemaStore;
