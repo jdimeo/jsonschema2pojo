@@ -167,4 +167,11 @@ public class CompositeAnnotator implements Annotator {
             annotator.timeField(field, clazz, propertyNode);
         }
     }
+
+    @Override
+    public void anyOfSubTypeInfo(JDefinedClass markerInterface, String discriminatorProperty, JDefinedClass[] childTypes) {
+        for (Annotator annotator : annotators) {
+            annotator.anyOfSubTypeInfo(markerInterface, discriminatorProperty, childTypes);
+        }
+    }
 }

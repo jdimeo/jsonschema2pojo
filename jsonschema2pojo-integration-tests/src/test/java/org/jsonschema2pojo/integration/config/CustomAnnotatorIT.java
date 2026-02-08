@@ -195,6 +195,10 @@ public class CustomAnnotatorIT {
         public void dateTimeField(JFieldVar field, JDefinedClass clazz, JsonNode propertyNode) {
             field.annotate(Deprecated.class);
         }
+
+        @Override
+        public void anyOfSubTypeInfo(JDefinedClass markerInterface, String discriminatorProperty, JDefinedClass[] childTypes) {
+        }
     }
 
 }

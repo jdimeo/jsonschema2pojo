@@ -101,6 +101,10 @@ public abstract class AbstractAnnotator implements Annotator {
         return false;
     }
 
+    @Override
+    public void anyOfSubTypeInfo(JDefinedClass markerInterface, String discriminatorProperty, JDefinedClass[] childTypes) {
+    }
+
     public GenerationConfig getGenerationConfig() {
         return generationConfig;
     }
