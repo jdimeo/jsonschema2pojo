@@ -22,13 +22,6 @@
   		</snapshotRepository>
 	</distributionManagement>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>central</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <modules>
         <module>jsonschema2pojo-cli</module>
         <module>jsonschema2pojo-core</module>
