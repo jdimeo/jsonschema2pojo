@@ -4,7 +4,7 @@
 
     <groupId>org.jsonschema2pojo</groupId>
     <artifactId>jsonschema2pojo</artifactId>
-    <version>1.3.3-no-dedup-enum-abstract</version>
+    <version>1.3.4-no-dedup-enum-abstract-choice</version>
 
     <packaging>pom</packaging>
     <name>jsonschema2pojo</name>
@@ -297,7 +297,7 @@
             <plugin>
                 <groupId>io.github.mavenplugins</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <extensions>true</extensions>
+                <extensions>false</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>false</autoPublish>
