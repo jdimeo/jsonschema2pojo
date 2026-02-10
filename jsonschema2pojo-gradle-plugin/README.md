@@ -15,7 +15,7 @@ With Groovy:
 ```groovy
 plugins {
   id "java"
-  id "org.jsonschema2pojo" version "1.2.1"
+  id "org.jsonschema2pojo" version "1.3.3"
 }
 
 jsonSchema2Pojo {
@@ -28,7 +28,7 @@ With Kotlin:
 ```kotlin
 plugins {
   id("java")
-  id("org.jsonschema2pojo") version "1.2.1"
+  id("org.jsonschema2pojo") version "1.3.3"
 }
 
 jsonSchema2Pojo {
@@ -44,7 +44,7 @@ Below we have a full build.gradle example, showing all available configuration o
 ```groovy
 plugins {
   id "java"
-  id "org.jsonschema2pojo" version "1.2.1"
+  id "org.jsonschema2pojo" version "1.3.3"
 }
 
 repositories {
@@ -56,7 +56,9 @@ dependencies {
   implementation 'javax.validation:validation-api:1.1.0.CR2'
   implementation 'jakarta.validation:jakarta.validation-api:3.0.0'
   // Required if generating Jackson 2 annotations
-  implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.1'
+  implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+  // Required if generating Jackson 3 annotations
+  implementation 'tools.jackson.core:jackson-databind:3.0.2'
   // Required if generating JodaTime data types
   implementation 'joda-time:joda-time:2.2'
 }
@@ -127,6 +129,7 @@ jsonSchema2Pojo {
   // The style of annotations to use in the generated Java types. Supported values:
   //  - jackson (alias of jackson2)
   //  - jackson2 (apply annotations from the Jackson 2.x library)
+  //  - jackson3 (apply annotations from the Jackson 3.x library)
   //  - jsonb (apply annotations from the JSON-B 1 library)
   //  - jsonb2 (apply annotations from the JSON-B 2 library)
   //  - gson (apply annotations from the Gson library)
@@ -266,7 +269,7 @@ jsonSchema2Pojo {
   dateTimeType = "java.time.LocalDateTime"
 
   // What type to use instead of string when adding string properties of format "time" to Java types
-  timeType = "java.time.LocalDate"
+  timeType = "java.time.LocalTime"
 
   // A custom pattern to use when formatting date fields during serialization. Requires support from
   // your JSON binding library.
@@ -302,9 +305,6 @@ jsonSchema2Pojo {
     // which (if unset) itself defaults to the current JVM version
   targetVersion = "1.8"
 
-  // deprecated, since we no longer use commons-lang for equals, hashCode, toString
-  useCommonsLang3 = false
-
   // A customer file filter to allow input files to be filtered/ignored
   fileFilter = new AllFileFilter()
 
@@ -331,7 +331,7 @@ generated source files.
 
 It can be useful to build this project and try out changes in your existing gradle project.
 
-1. From the root, run `mvn clean install`. This will install jsonschema2pojo in your local maven repository.
+1. From the root, run `./mvnw clean install`. This will install jsonschema2pojo in your local maven repository.
 2. Include the local repo in your build.gradle, and change your dependency to use the `latest.integration` version e.g.:
 
 ```groovy

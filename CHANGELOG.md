@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.3
+* Support type-use annotations for map value validation (Map<String, @Valid T>) ([#1774](https://github.com/joelittlejohn/jsonschema2pojo/pull/1774))
+* Ignore null values when generating item type from array examples ([#1772](https://github.com/joelittlejohn/jsonschema2pojo/pull/1772))
+* Support type-use annotations for array item validation (List<@Valid T>) ([#1771](https://github.com/joelittlejohn/jsonschema2pojo/pull/1771))
+
+## 1.3.2
+* Could not apply requested plugin error when using version 1.3.1 of Gradle plugin 'org.jsonschema2pojo' ([#1769](https://github.com/joelittlejohn/jsonschema2pojo/issues/1769))
+
+## 1.3.1
+* Add plexus-utils dependency, as this is no longer provided in Maven 3.9 ([#1751](https://github.com/joelittlejohn/jsonschema2pojo/pull/1751))
+
+## 1.3.0
+* Migrate publishing from legacy OSSRH to Maven Central Portal ([#1747](https://github.com/joelittlejohn/jsonschema2pojo/pull/1747))
+* **Remove Ant task (no longer supported) ([#1743](https://github.com/joelittlejohn/jsonschema2pojo/pull/1743))**
+* **Require JDK 17 ([#1741](https://github.com/joelittlejohn/jsonschema2pojo/pull/1741))**
+* Add Jackson 3 annotation support ([#1740](https://github.com/joelittlejohn/jsonschema2pojo/pull/1740))
+* Prevent StackOverflowError when root is self-referencing ([#1679](https://github.com/joelittlejohn/jsonschema2pojo/pull/1679))
+* Fix 'AbstractCompile.destinationDir property has been deprecated' error when using Gradle 8 ([#1646](https://github.com/joelittlejohn/jsonschema2pojo/issues/1646))
+* Fix problems with remote URL (e.g. http) when using Maven Plugin ([#1614](https://github.com/joelittlejohn/jsonschema2pojo/pull/1614))
+* Fix generics class warning when using generated base builder class ([#1587](https://github.com/joelittlejohn/jsonschema2pojo/pull/1587))
+* Allow URL(s) as source in jsonschema2pojo-gradle-plugin ([#1554](https://github.com/joelittlejohn/jsonschema2pojo/pull/1554))
+
+## 1.2.2
+* Don't log ClassAlreadyExistsException for Enum ([#1597](https://github.com/joelittlejohn/jsonschema2pojo/pull/1597))
+* Prevent generating duplicate constructors when all properties are required; and both includeAllPropertiesConstructor and includeRequiredPropertiesConstructor are true ([#1553](https://github.com/joelittlejohn/jsonschema2pojo/pull/1553))
+* Add support for property names containing question mark(s) ([#1522](https://github.com/joelittlejohn/jsonschema2pojo/pull/1522))
+* Avoid NPE when setting additionalProperties path ([#1515](https://github.com/joelittlejohn/jsonschema2pojo/pull/1515))
+
 ## 1.2.1
 * Fix detection of targetVersion for Android gradle builds ([#1487](https://github.com/joelittlejohn/jsonschema2pojo/pull/1487))
 

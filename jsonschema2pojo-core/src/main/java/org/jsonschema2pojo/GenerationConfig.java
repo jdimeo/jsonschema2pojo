@@ -178,6 +178,9 @@ public interface GenerationConfig {
    *         <li><code>jackson2</code> (apply annotations from the
    *         <a href="https://github.com/FasterXML/jackson-annotations">
    *         Jackson 2.x</a> library)</li>
+   *         <li><code>jackson3</code> (apply annotations from the
+   *         <a href="https://github.com/FasterXML/jackson-annotations">
+   *         Jackson 3.x</a> library)</li>
    *         <li><code>gson</code> (apply annotations from the
    *         <a href="https://code.google.com/p/google-gson/">gson</a>
    *         library)</li>
@@ -190,7 +193,9 @@ public interface GenerationConfig {
   AnnotationStyle getAnnotationStyle();
 
   /**
-   * When {@code true} the title is used as class name.
+   * Gets the 'useTitleAsClassname' configuration option.
+   *
+   * @return Whether to use the 'title' property value as the class name for object schemas.
    */
   boolean isUseTitleAsClassname();
 
@@ -617,8 +622,10 @@ public interface GenerationConfig {
   }
 
   /**
-   * Whether to mark generated classes with the annotation <code>javax.annotation.@Generated</code>
-   * (or <code>javax.annotation.processing.Generated</code> for Java 9 and later).
+   * Gets the 'includeGeneratedAnnotation' configuration option.
+   *
+   * @return Whether to mark generated classes with the annotation <code>javax.annotation.@Generated</code>
+   * (<code>javax.annotation.processing.Generated</code> for Java 9 and later).
    */
   boolean isIncludeGeneratedAnnotation();
 

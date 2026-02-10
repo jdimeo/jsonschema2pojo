@@ -19,6 +19,28 @@ package org.jsonschema2pojo.maven;
 import static org.apache.commons.lang3.ArrayUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.*;
 
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.io.FilenameUtils;
+import org.apache.maven.artifact.DependencyResolutionRequiredException;
+import org.apache.maven.model.Plugin;
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.utils.xml.Xpp3Dom;
 import org.jsonschema2pojo.AllFileFilter;
 import org.jsonschema2pojo.AnnotationStyle;
 import org.jsonschema2pojo.Annotator;
@@ -33,28 +55,6 @@ import org.jsonschema2pojo.SourceType;
 import org.jsonschema2pojo.rules.RuleFactory;
 import org.jsonschema2pojo.util.JavaVersion;
 import org.jsonschema2pojo.util.URLUtil;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.utils.xml.Xpp3Dom;
 
 /**
  * When invoked, this goal reads one or more
@@ -243,6 +243,10 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
      * <li><code>jackson2</code> (apply annotations from the
      * <a href="https://github.com/FasterXML/jackson-annotations">Jackson
      * 2.x</a> library)</li>
+     * <li><code>jackson3</code> (apply annotations from the
+     * <a href="https://github.com/FasterXML/jackson-annotations">Jackson
+     * 2.x</a> library, and from <a href="https://github.com/FasterXML/jackson-databind">Jackson 3.x databind</a>
+     * for data-binding annotations)</li>
      * <li><code>jackson</code> (alias for jackson2)</li>
      * <li><code>jsonb</code> (apply annotations from the
      * JSON-B 1.x library)</li>
@@ -448,15 +452,6 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
      */
     @Parameter(property = "jsonschema2pojo.dateType")
     private String dateType = null;
-
-    /**
-     * Whether to use commons-lang 3.x imports instead of commons-lang 2.x
-     * imports when adding equals, hashCode and toString methods.
-     *
-     * @since 0.4.1
-     */
-    @Parameter(property = "jsonschema2pojo.useCommonsLang3", defaultValue = "false")
-    private boolean useCommonsLang3 = false;
 
     /**
      * Whether to make the generated types 'parcelable' (for Android development).
@@ -784,7 +779,7 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
      * the command line interface.
      */
     @Override
-    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = { "NP_UNWRITTEN_FIELD", "UWF_UNWRITTEN_FIELD" }, justification = "Private fields set by Maven.")
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(value = { "NP_UNWRITTEN_FIELD", "UWF_UNWRITTEN_FIELD" }, justification = "Private fields set by Maven.")
     @SuppressWarnings("PMD.UselessParentheses")
     public void execute() throws MojoExecutionException {
 
@@ -819,7 +814,8 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
         } else if (!isEmpty(sourcePaths)) {
             // verify individual source paths
             for (int i = 0; i < sourcePaths.length; i++) {
-                sourcePaths[i] = FilenameUtils.normalize(sourcePaths[i]);
+                sourcePaths[i] = URLUtil.isLocalUrl(sourcePaths[i]) ?
+                        FilenameUtils.normalize(sourcePaths[i]) : sourcePaths[i];
                 try {
                     URLUtil.parseURL(sourcePaths[i]);
                 } catch (IllegalArgumentException e) {
@@ -845,10 +841,6 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
 
         if (addCompileSourceRoot) {
             project.addCompileSourceRoot(outputDirectory.getPath());
-        }
-
-        if (useCommonsLang3) {
-            getLog().warn("useCommonsLang3 is deprecated. Please remove it from your config.");
         }
 
         RuleLogger logger = new MojoRuleLogger(getLog());
@@ -1037,11 +1029,6 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
         return useJodaLocalTimes;
     }
 
-    @Deprecated
-    public boolean isUseCommonsLang3() {
-        return useCommonsLang3;
-    }
-
     @Override
     public boolean isParcelable() {
         return parcelable;
@@ -1126,6 +1113,7 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
     @Override
     public boolean isIncludeSetters() { return includeSetters; }
 
+    @SuppressWarnings("unchecked")
     private void setTargetVersion() {
         if (isNotBlank(this.targetVersion)) {
             return;
@@ -1143,7 +1131,7 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
             return;
         }
 
-        for (Plugin p : (List<Plugin>) project.getBuildPlugins()) {
+        for (Plugin p : project.getBuildPlugins()) {
             if (p.getKey().equals("org.apache.maven.plugins:maven-compiler-plugin") && p.getConfiguration() instanceof Xpp3Dom) {
                 final Xpp3Dom compilerSourceConfig = ((Xpp3Dom) p.getConfiguration()).getChild("source");
                 if (compilerSourceConfig != null) {

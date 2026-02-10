@@ -116,3 +116,10 @@
 * TheTrueDentist
 * Josejulio Martínez
 * Nils Andresen
+* Michael Edgar
+* Julien Herr
+* Daniel Hammer
+* jiri-meluzin
+* Oliver Granseier
+* Diego Granados
+* Laurent Almeras

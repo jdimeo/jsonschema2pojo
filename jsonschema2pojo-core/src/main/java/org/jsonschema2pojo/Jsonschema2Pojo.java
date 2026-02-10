@@ -21,7 +21,6 @@ import static org.apache.commons.lang3.StringUtils.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.Strings;
 import org.jsonschema2pojo.exception.GenerationException;
 import org.jsonschema2pojo.rules.RuleFactory;
 import org.jsonschema2pojo.util.NameHelper;
@@ -48,6 +48,8 @@ public class Jsonschema2Pojo {
      *            the configuration options (including source and target paths,
      *            and other behavioural options) that will control code
      *            generation
+     * @param logger
+     *            a logger appropriate to the current context, usually a wrapper around the build platform logger
      * @throws FileNotFoundException
      *             if the source path is not found
      * @throws IOException
@@ -113,11 +115,11 @@ public class Jsonschema2Pojo {
         }
 
         try {
-            return clazz.newInstance();
-        } catch (InstantiationException e) {
-            throw new IllegalArgumentException("Failed to create a rule factory from the given class. An exception was thrown on trying to create a new instance.", e.getCause());
+            return clazz.getDeclaredConstructor().newInstance();
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException("Failed to create a rule factory from the given class. It appears that we do not have access to this class - is both the class and its no-arg constructor marked public?", e);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Failed to create a rule factory from the given class. An exception was thrown on trying to create a new instance.", e.getCause());
         }
     }
 
@@ -151,7 +153,7 @@ public class Jsonschema2Pojo {
         }
     }
 
-    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
     private static void delete(File f) {
         if (f.isDirectory()) {
             for (File child : f.listFiles()) {
@@ -171,32 +173,28 @@ public class Jsonschema2Pojo {
     }
 
     public static String getNodeName(String filePath, GenerationConfig config) {
-        try {
-            String fileName = FilenameUtils.getName(URLDecoder.decode(filePath, StandardCharsets.UTF_8.toString()));
-            String[] extensions = config.getFileExtensions() == null ? new String[] {} : config.getFileExtensions();
-            
-            boolean extensionRemoved = false;
-            for (int i = 0; i < extensions.length; i++) {
-                String extension = extensions[i];
-                if (extension.length() == 0) {
-                    continue;
-                }
-                if (!extension.startsWith(".")) {
-                    extension = "." + extension;
-                }
-                if (fileName.endsWith(extension)) {
-                    fileName = removeEnd(fileName, extension);
-                    extensionRemoved = true;
-                    break;
-                }
+        String fileName = FilenameUtils.getName(URLDecoder.decode(filePath, StandardCharsets.UTF_8));
+        String[] extensions = config.getFileExtensions() == null ? new String[] {} : config.getFileExtensions();
+
+        boolean extensionRemoved = false;
+        for (int i = 0; i < extensions.length; i++) {
+            String extension = extensions[i];
+            if (extension.length() == 0) {
+                continue;
             }
-            if (!extensionRemoved) {
-                fileName = FilenameUtils.getBaseName(fileName);
+            if (!extension.startsWith(".")) {
+                extension = "." + extension;
             }
-            return fileName;
-        } catch (UnsupportedEncodingException e) {
-            throw new IllegalArgumentException(String.format("Unable to generate node name from URL: %s", filePath), e);
+            if (fileName.endsWith(extension)) {
+                fileName = Strings.CS.removeEnd(fileName, extension);
+                extensionRemoved = true;
+                break;
+            }
         }
+        if (!extensionRemoved) {
+            fileName = FilenameUtils.getBaseName(fileName);
+        }
+        return fileName;
     }
     
 }

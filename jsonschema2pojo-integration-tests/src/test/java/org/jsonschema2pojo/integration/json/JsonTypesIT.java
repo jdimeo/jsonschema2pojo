@@ -20,7 +20,7 @@ import static java.util.Arrays.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.jsonschema2pojo.integration.util.CodeGenerationHelper.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
@@ -31,21 +31,19 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.jsonschema2pojo.integration.util.Jsonschema2PojoRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-@RunWith(Parameterized.class)
+@ParameterizedClass(name="{0}")
+@MethodSource("data")
 public class JsonTypesIT {
 
-    @Parameters(name="{0}")
     public static List<Object[]> data() {
         return Arrays.asList(new Object[][] {
                 { "json", new ObjectMapper()},
@@ -53,11 +51,8 @@ public class JsonTypesIT {
         });
     }
 
-    @Rule
+    @RegisterExtension
     public Jsonschema2PojoRule schemaRule = new Jsonschema2PojoRule();
-
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
 
     private final String format;
     private final ObjectMapper objectMapper;
@@ -88,7 +83,7 @@ public class JsonTypesIT {
         assertThat((Boolean) generatedType.getMethod("getD").invoke(deserializedValue), is(true));
         assertThat(generatedType.getMethod("getE").invoke(deserializedValue), is(nullValue()));
         assertThat(generatedType.getMethod("getF").invoke(deserializedValue), is(21474836470L));
-
+        assertThat((Double) generatedType.getMethod("getG").invoke(deserializedValue), is(92233720368547758070d));
     }
 
     @Test
@@ -102,6 +97,7 @@ public class JsonTypesIT {
         Object deserializedValue = objectMapper.readValue(this.getClass().getResourceAsStream(filePath), generatedType);
 
         assertThat((BigInteger) generatedType.getMethod("getB").invoke(deserializedValue), is(new BigInteger("123")));
+        assertThat((BigInteger) generatedType.getMethod("getF").invoke(deserializedValue), is(new BigInteger("21474836470")));
     }
 
     @Test
@@ -115,15 +111,14 @@ public class JsonTypesIT {
         Object deserializedValue = objectMapper.readValue(this.getClass().getResourceAsStream(filePath), generatedType);
 
         assertThat((BigDecimal) generatedType.getMethod("getC").invoke(deserializedValue), is(new BigDecimal("12999999999999999999999.99")));
+        assertThat((BigDecimal) generatedType.getMethod("getG").invoke(deserializedValue), is(new BigDecimal("92233720368547758070")));
     }
 
-    @Test(expected = ClassNotFoundException.class)
-    public void simpleTypeAtRootProducesNoJavaTypes() throws ClassNotFoundException {
-
+    @Test
+    public void simpleTypeAtRootProducesNoJavaTypes() {
         ClassLoader resultsClassLoader = schemaRule.generateAndCompile(filePath("simpleTypeAsRoot"), "com.example", config("sourceType", format));
 
-        resultsClassLoader.loadClass("com.example.SimpleTypeAsRoot");
-
+        assertThrows(ClassNotFoundException.class, () -> resultsClassLoader.loadClass("com.example.SimpleTypeAsRoot"));
     }
 
     @Test
@@ -191,11 +186,11 @@ public class JsonTypesIT {
             List<?> itemList = (List<?>) genType.getMethod("getList").invoke(item);
             assertThat((Integer) listItemType.getMethod("getA").invoke(itemList.get(0)), is(1));
             assertThat((String) listItemType.getMethod("getC").invoke(itemList.get(0)), is("hey"));
-            assertNull(listItemType.getMethod("getB").invoke(itemList.get(0)));
+            assertThat(listItemType.getMethod("getB").invoke(itemList.get(0)), is(nullValue()));
 
             Object itemObj = genType.getMethod("getObj").invoke(item);
             assertThat((String) objItemType.getMethod("getName").invoke(itemObj), is("k"));
-            assertNull(objItemType.getMethod("getIndex").invoke(itemObj));
+            assertThat(objItemType.getMethod("getIndex").invoke(itemObj), is(nullValue()));
         }
         {
             Object item = items[1];
@@ -203,11 +198,11 @@ public class JsonTypesIT {
             List<?> itemList = (List<?>) genType.getMethod("getList").invoke(item);
             assertThat((Integer) listItemType.getMethod("getB").invoke(itemList.get(0)), is(177));
             assertThat((String) listItemType.getMethod("getC").invoke(itemList.get(0)), is("hey again"));
-            assertNull(listItemType.getMethod("getA").invoke(itemList.get(0)));
+            assertThat(listItemType.getMethod("getA").invoke(itemList.get(0)), is(nullValue()));
 
             Object itemObj = genType.getMethod("getObj").invoke(item);
             assertThat((Integer) objItemType.getMethod("getIndex").invoke(itemObj), is(8));
-            assertNull(objItemType.getMethod("getName").invoke(itemObj));
+            assertThat(objItemType.getMethod("getName").invoke(itemObj), is(nullValue()));
         }
     }
 
@@ -220,21 +215,40 @@ public class JsonTypesIT {
 
         // Different array items use different types for the same property;
         // we don't support union types, so we have to pick one
-        assertEquals(Integer.class, genType.getMethod("getScalar").getReturnType());
+        assertThat(genType.getMethod("getScalar").getReturnType(), is(equalTo(Integer.class)));
 
-        thrown.expect(InvalidFormatException.class);
-        thrown.expectMessage(startsWith("Cannot deserialize value of type `java.lang.Integer` from String \"what\": not a valid `java.lang.Integer` value"));
-        objectMapper.readValue(this.getClass().getResourceAsStream(filePath), Array.newInstance(genType, 0).getClass());
+        final InvalidFormatException exception = assertThrows(
+                InvalidFormatException.class,
+                () -> objectMapper.readValue(this.getClass().getResourceAsStream(filePath), Array.newInstance(genType, 0).getClass()));
+        assertThat(exception.getMessage(), startsWith("Cannot deserialize value of type `java.lang.Integer` from String \"what\": not a valid `java.lang.Integer` value"));
     }
 
-    @Test(expected = ClassNotFoundException.class)
-    public void arrayAtRootWithSimpleTypeProducesNoJavaTypes() throws Exception {
-
+    @Test
+    public void arrayAtRootWithSimpleTypeProducesNoJavaTypes() {
         final String filePath = filePath("arrayAsRoot");
         ClassLoader resultsClassLoader = schemaRule.generateAndCompile(filePath, "com.example", config("sourceType", format));
 
-        resultsClassLoader.loadClass("com.example.ArrayAsRoot");
+        assertThrows(ClassNotFoundException.class, () -> resultsClassLoader.loadClass("com.example.ArrayAsRoot"));
+    }
 
+    @Test
+    public void arrayWithNullFieldValuesPreservesNestedTypes() throws Exception {
+        // https://github.com/joelittlejohn/jsonschema2pojo/pull/1746
+        // null field values in array must not erase previous inner type lookup
+
+        final String filePath = filePath("arrayNullField");
+        ClassLoader resultsClassLoader = schemaRule.generateAndCompile(filePath, "com.example", config("sourceType", format));
+
+        Class<?> arrayItemType = resultsClassLoader.loadClass("com.example.ArrayNullField");
+        Class<?> myfieldType = resultsClassLoader.loadClass("com.example.Myfield");
+
+        // Verify the Myfield class has both subfield1 and subfield2 properties
+        assertThat(myfieldType.getMethod("getSubfield1").getReturnType(), is(equalTo(String.class)));
+        assertThat(myfieldType.getMethod("getSubfield2").getReturnType(), is(equalTo(String.class)));
+
+        // Verify we can deserialize the array
+        Object[] items = (Object[]) objectMapper.readValue(this.getClass().getResourceAsStream(filePath), Array.newInstance(arrayItemType, 0).getClass());
+        assertThat(items.length, is(5));
     }
 
     @Test

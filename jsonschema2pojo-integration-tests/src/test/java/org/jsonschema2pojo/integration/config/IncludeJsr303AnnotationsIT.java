@@ -17,9 +17,9 @@
 package org.jsonschema2pojo.integration.config;
 
 import static java.util.Arrays.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.jsonschema2pojo.integration.util.CodeGenerationHelper.*;
-import static org.junit.Assert.*;
 
 import org.jsonschema2pojo.integration.util.FileSearchMatcher;
 import org.jsonschema2pojo.integration.util.Jsonschema2PojoRule;
@@ -28,39 +28,34 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.beans.PropertyDescriptor;
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.bval.jsr.ApacheValidationProvider;
 import org.hamcrest.Matcher;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @SuppressWarnings("rawtypes")
-@RunWith(Parameterized.class)
+@ParameterizedClass
+@ValueSource(booleans = { true, false })
 public class IncludeJsr303AnnotationsIT {
 
     private final boolean useJakartaValidation;
-    @Rule public Jsonschema2PojoRule schemaRule = new Jsonschema2PojoRule();
+    @RegisterExtension public Jsonschema2PojoRule schemaRule = new Jsonschema2PojoRule();
 
     private static final javax.validation.Validator javaxValidator = javax.validation.Validation.byProvider(ApacheValidationProvider.class)
             .configure()
             .buildValidatorFactory()
             .getValidator();
     private static final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-
-    @Parameterized.Parameters
-    public static Collection<Object> data() {
-        return asList(true, false);
-    }
 
     public IncludeJsr303AnnotationsIT(boolean useJakartaValidation) {
         this.useJakartaValidation = useJakartaValidation;
@@ -311,12 +306,12 @@ public class IncludeJsr303AnnotationsIT {
     }
 
     @Test
-    public void jsr303ValidAnnotationIsAddedForObject() throws ClassNotFoundException {
+    public void jsr303ValidAnnotationIsAddedForObject() throws ReflectiveOperationException {
         ClassLoader resultsClassLoader = schemaRule.generateAndCompile("/schema/jsr303/validObject.json", "com.example",
                 config("includeJsr303Annotations", true, "useJakartaValidation", useJakartaValidation));
 
-        Class validObjectType = resultsClassLoader.loadClass("com.example.ValidObject");
-        Class objectFieldType = resultsClassLoader.loadClass("com.example.Objectfield");
+        Class<?> validObjectType = resultsClassLoader.loadClass("com.example.ValidObject");
+        Class<?> objectFieldType = resultsClassLoader.loadClass("com.example.Objectfield");
 
         Object invalidObjectFieldInstance = createInstanceWithPropertyValue(objectFieldType, "childprimitivefield", "Too long");
         Object validObjectInstance = createInstanceWithPropertyValue(validObjectType, "objectfield", invalidObjectFieldInstance);
@@ -327,6 +322,12 @@ public class IncludeJsr303AnnotationsIT {
         validObjectInstance = createInstanceWithPropertyValue(validObjectType, "objectfield", validObjectFieldInstance);
 
         assertNumberOfConstraintViolationsOn(validObjectInstance, is(0));
+
+        final var expectedAnnotationClass = getValidAnnotationClass();
+        assertThat(
+                "@Valid should not be on the field, but on the item type",
+                validObjectType.getDeclaredField("objectTypeField").isAnnotationPresent(expectedAnnotationClass),
+                is(true));
     }
 
     @Test
@@ -375,16 +376,46 @@ public class IncludeJsr303AnnotationsIT {
         assertNumberOfConstraintViolationsOn(validArrayInstance, is(1));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
-    public void jsr303AnnotationsValidatedForAdditionalProperties() throws ClassNotFoundException, NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    public void jsr303ValidAnnotationIsOnItemTypeNotField() throws ClassNotFoundException, NoSuchFieldException {
+        ClassLoader resultsClassLoader = schemaRule.generateAndCompile("/schema/jsr303/validArray.json", "com.example",
+                config("includeJsr303Annotations", true, "useJakartaValidation", useJakartaValidation));
+
+        final Class<? extends Annotation> expectedValidAnnotation = getValidAnnotationClass();
+        Class<?> validArrayType = resultsClassLoader.loadClass("com.example.ValidArray");
+        java.lang.reflect.Field objectArrayField = validArrayType.getDeclaredField("objectarray");
+
+        // The @Valid annotation should be on the item type (e.g., List<@Valid Item>), not on the field
+        assertThat("@Valid should not be on the field, but on the item type",
+                objectArrayField.getAnnotation(expectedValidAnnotation), is(nullValue()));
+
+        // Verify the @Valid annotation IS present on the type parameter (item type)
+        java.lang.reflect.AnnotatedType annotatedType = objectArrayField.getAnnotatedType();
+        assertThat("Field type should be an AnnotatedParameterizedType",
+                annotatedType, is(instanceOf(java.lang.reflect.AnnotatedParameterizedType.class)));
+
+        java.lang.reflect.AnnotatedParameterizedType parameterizedType =
+                (java.lang.reflect.AnnotatedParameterizedType) annotatedType;
+        java.lang.reflect.AnnotatedType[] typeArguments = parameterizedType.getAnnotatedActualTypeArguments();
+
+        assertThat("Should have one type argument", typeArguments.length, is(1));
+
+        // Check that the type argument (item type) has exactly one annotation: @Valid
+        java.lang.annotation.Annotation[] itemTypeAnnotations = typeArguments[0].getAnnotations();
+        assertThat("Item type should have exactly one annotation", itemTypeAnnotations.length, is(1));
+        assertThat("@Valid annotation should be on the item type parameter",
+                itemTypeAnnotations[0].annotationType(), is(expectedValidAnnotation));
+    }
+
+    @Test
+    public void jsr303AnnotationsValidatedForAdditionalProperties() throws ReflectiveOperationException {
         ClassLoader resultsClassLoader = schemaRule.generateAndCompile("/schema/jsr303/validAdditionalProperties.json", "com.example",
                 config("includeJsr303Annotations", true, "useJakartaValidation", useJakartaValidation));
 
-        Class parentType = resultsClassLoader.loadClass("com.example.ValidAdditionalProperties");
-        Object parent = parentType.newInstance();
+        Class<?> parentType = resultsClassLoader.loadClass("com.example.ValidAdditionalProperties");
+        Object parent = parentType.getDeclaredConstructor().newInstance();
 
-        Class subPropertyType = resultsClassLoader.loadClass("com.example.ValidAdditionalPropertiesProperty");
+        Class<?> subPropertyType = resultsClassLoader.loadClass("com.example.ValidAdditionalPropertiesProperty");
         Object validSubPropertyInstance = createInstanceWithPropertyValue(subPropertyType, "maximum", 9);
         Object invalidSubPropertyInstance = createInstanceWithPropertyValue(subPropertyType, "maximum", 11);
 
@@ -395,6 +426,30 @@ public class IncludeJsr303AnnotationsIT {
 
         setter.invoke(parent, "maximum", invalidSubPropertyInstance);
         assertNumberOfConstraintViolationsOn(parent, is(1));
+
+        // Verify that @Valid is on the map value type parameter, not on the field itself
+        final Class<? extends Annotation> expectedValidAnnotation = getValidAnnotationClass();
+        java.lang.reflect.Field additionalPropertiesField = parentType.getDeclaredField("additionalProperties");
+
+        assertThat("@Valid should not be on the field, but on the value type parameter",
+               additionalPropertiesField.getAnnotation(expectedValidAnnotation), is(nullValue()));
+
+        java.lang.reflect.AnnotatedType annotatedType = additionalPropertiesField.getAnnotatedType();
+        assertThat("Field type should be an AnnotatedParameterizedType",
+                annotatedType, is(instanceOf(java.lang.reflect.AnnotatedParameterizedType.class)));
+
+        java.lang.reflect.AnnotatedParameterizedType parameterizedType =
+                (java.lang.reflect.AnnotatedParameterizedType) annotatedType;
+        java.lang.reflect.AnnotatedType[] typeArguments = parameterizedType.getAnnotatedActualTypeArguments();
+
+        assertThat("Should have two type arguments (Map<String, ValueType>)", typeArguments.length, is(2));
+
+        assertThat("Key type (String) should have no annotations", typeArguments[0].getAnnotations().length, is(0));
+
+        java.lang.annotation.Annotation[] valueTypeAnnotations = typeArguments[1].getAnnotations();
+        assertThat("Value type should have exactly one annotation", valueTypeAnnotations.length, is(1));
+        assertThat("@Valid annotation should be on the value type parameter",
+                valueTypeAnnotations[0].annotationType(), is(expectedValidAnnotation));
     }
 
     private void assertNumberOfConstraintViolationsOn(Object instance, Matcher<Integer> matcher) {
@@ -403,9 +458,9 @@ public class IncludeJsr303AnnotationsIT {
         assertThat("Violations (" + validatorName + "): " + violationsForValidInstance.toString(), violationsForValidInstance.size(), matcher);
     }
 
-    private static Object createInstanceWithPropertyValue(Class type, String propertyName, Object propertyValue) {
+    private static Object createInstanceWithPropertyValue(Class<?> type, String propertyName, Object propertyValue) {
         try {
-            Object instance = type.newInstance();
+            Object instance = type.getDeclaredConstructor().newInstance();
             PropertyDescriptor propertyDescriptor = new PropertyDescriptor(propertyName, type);
             propertyDescriptor.getWriteMethod().invoke(instance, propertyValue);
 
@@ -428,4 +483,9 @@ public class IncludeJsr303AnnotationsIT {
     private static Matcher<File> containsText(String searchText) {
         return new FileSearchMatcher(searchText);
     }
+
+    private Class<? extends Annotation> getValidAnnotationClass() {
+        return useJakartaValidation ? jakarta.validation.Valid.class : javax.validation.Valid.class;
+    }
+
 }

@@ -56,7 +56,7 @@ class GenerateJsonSchemaJavaTask extends DefaultTask {
       setTargetVersion configuration
 
       inputs.property("configuration", configuration.toString())
-      inputs.files project.files(configuration.sourceFiles)
+      inputs.files project.files(configuration.source.findAll { 'file'.equals(it.protocol) })
     }
   }
 
@@ -73,10 +73,6 @@ class GenerateJsonSchemaJavaTask extends DefaultTask {
 
   @TaskAction
   def generate() {
-    if (Boolean.TRUE == configuration.properties.get("useCommonsLang3")) {
-      logger.warn 'useCommonsLang3 is deprecated. Please remove it from your config.'
-    }
-
     logger.info 'Using this configuration:\n{}', configuration
 
     Jsonschema2Pojo.generate(configuration, new GradleRuleLogger(logger))
@@ -85,7 +81,7 @@ class GenerateJsonSchemaJavaTask extends DefaultTask {
   void setTargetVersion(JsonSchemaExtension configuration) {
     if (!configuration.targetVersion) {
       def compileJavaTask = project.getTasksByName("compileJava", false).first()
-      configuration.targetVersion = compileJavaTask.getProperties().get("sourceCompatibility")
+      configuration.targetVersion = compileJavaTask.sourceCompatibility
       logger.info 'Using Gradle sourceCompatibility as targetVersion for jsonschema2pojo: ' + configuration.targetVersion
     }
   }
