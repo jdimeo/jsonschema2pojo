@@ -32,14 +32,13 @@ import org.jsonschema2pojo.Annotator;
 import org.jsonschema2pojo.Schema;
 import org.jsonschema2pojo.exception.ClassAlreadyExistsException;
 import org.jsonschema2pojo.exception.GenerationException;
+import org.jsonschema2pojo.util.AnnotationHelper;
 import org.jsonschema2pojo.util.ParcelableHelper;
 import org.jsonschema2pojo.util.ReflectionHelper;
 import org.jsonschema2pojo.util.SerializableHelper;
-import org.jsonschema2pojo.util.AnnotationHelper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.codemodel.ClassType;
-import com.sun.codemodel.JAnnotationUse;
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JClassAlreadyExistsException;
@@ -99,7 +98,8 @@ public class ObjectRule implements Rule<JPackage, JType> {
 
         jclass._extends((JClass) superType);
 
-        schema.setJavaTypeIfEmpty(jclass);
+        // storing this type for future self refs
+        schema.setJavaTypeIfEmpty(ruleFactory.getValidRule().apply(nodeName, node, parent, jclass, schema));
 
         if (node.has("title")) {
             ruleFactory.getTitleRule().apply(nodeName, node.get("title"), node, jclass, schema);
@@ -133,7 +133,7 @@ public class ObjectRule implements Rule<JPackage, JType> {
         }
        
         if (ruleFactory.getGenerationConfig().isIncludeGeneratedAnnotation()) {
-        	AnnotationHelper.addGeneratedAnnotation(jclass);
+            AnnotationHelper.addGeneratedAnnotation(ruleFactory.getGenerationConfig(), jclass);
         }
         if (ruleFactory.getGenerationConfig().isIncludeToString()) {
             addToString(jclass);
@@ -242,12 +242,15 @@ public class ObjectRule implements Rule<JPackage, JType> {
                 } else {
                     newType = _package.owner()._class(fqn);
                 }
+                ruleFactory.getLogger().debug("Adding " + newType.fullName());
             } else {
+                final String className = ruleFactory.getNameHelper().getUniqueClassName(nodeName, node, _package);
                 if (usePolymorphicDeserialization) {
-                    newType = _package._class(JMod.PUBLIC, ruleFactory.getNameHelper().getUniqueClassName(nodeName, node, _package), ClassType.CLASS);
+                    newType = _package._class(JMod.PUBLIC, className, ClassType.CLASS);
                 } else {
-                    newType = _package._class(ruleFactory.getNameHelper().getUniqueClassName(nodeName, node, _package));
+                    newType = _package._class(className);
                 }
+                ruleFactory.getLogger().debug("Adding " + newType.fullName());
             }
         } catch (JClassAlreadyExistsException e) {
             throw new ClassAlreadyExistsException(e.getExistingClass());
@@ -440,8 +443,7 @@ public class ObjectRule implements Rule<JPackage, JType> {
                 }
             }
 
-            for (Iterator<Map.Entry<String, JsonNode>> iterator = properties.fields(); iterator.hasNext(); ) {
-                Map.Entry<String, JsonNode> entry = iterator.next();
+            for (Map.Entry<String, JsonNode> entry : properties.properties()) {
                 String propertyName = entry.getKey();
                 JsonNode propertyNode = entry.getValue();
 
@@ -529,7 +531,8 @@ public class ObjectRule implements Rule<JPackage, JType> {
         AnnotationStyle annotationStyle = ruleFactory.getGenerationConfig().getAnnotationStyle();
 
         if (annotationStyle == AnnotationStyle.JACKSON
-                || annotationStyle == AnnotationStyle.JACKSON2) {
+                || annotationStyle == AnnotationStyle.JACKSON2
+                || annotationStyle == AnnotationStyle.JACKSON3) {
             return ruleFactory.getGenerationConfig().isIncludeTypeInfo() || node.has("deserializationClassProperty");
         }
 
