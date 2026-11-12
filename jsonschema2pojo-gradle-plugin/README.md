@@ -200,6 +200,9 @@ jsonSchema2Pojo {
 
   // Whether to initialize Set and List fields as empty collections, or leave them as null.
   initializeCollections = true
+  
+  // Whether or not to initialize intermediary objects with no-arg constructors
+  initializeObjects = false
 
   // Whether to add a prefix to generated classes.
   classNamePrefix = ""
