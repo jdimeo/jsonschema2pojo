@@ -21,6 +21,7 @@ import org.jsonschema2pojo.JsonPointerUtils;
 import org.jsonschema2pojo.Schema;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JDocCommentable;
@@ -210,6 +211,18 @@ public class PropertyRule implements Rule<JDefinedClass, JDefinedClass> {
         if (node.has("$ref")) {
             Schema refSchema = ruleFactory.getSchemaStore().create(parent, node.get("$ref").asText(), ruleFactory.getGenerationConfig().getRefFragmentPathDelimiters());
             JsonNode refNode = refSchema.getContent();
+            
+            // If the reference is an object and has custom properties, merge the referencing node's
+            // properties onto the result
+            if (refNode.isObject()) {
+            	ObjectNode referenced = refNode.deepCopy();
+            	ObjectNode referencing = node.deepCopy();
+            	referencing.remove("$ref"); // Remove the reference since we recursively call this method
+            	referenced.setAll(referencing);
+            	return resolveRefs(referenced, refSchema);
+            	
+            }
+            
             return resolveRefs(refNode, refSchema);
         } else {
             return node;
