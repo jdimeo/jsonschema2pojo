@@ -319,6 +319,7 @@
             </activation>
             <build>
                 <plugins>
+                    <!--
                     <plugin>
                         <artifactId>maven-gpg-plugin</artifactId>
                         <executions>
@@ -331,13 +332,14 @@
                             </execution>
                         </executions>
                     </plugin>
+                    -->
                     <plugin>
                         <artifactId>maven-source-plugin</artifactId>
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
                                 <goals>
-                                    <goal>jar</goal>
+                                    <goal>jar-no-fork</goal>
                                 </goals>
                             </execution>
                         </executions>
