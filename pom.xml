@@ -297,9 +297,10 @@
             <plugin>
                 <groupId>io.github.mavenplugins</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <extensions>true</extensions>
+                <extensions>false</extensions>
                 <configuration>
-                    <publishingServerId>central</publishingServerId>
+                	<skipPublishing>true</skipPublishing>
+                    <publishingServerId>gitlab-maven</publishingServerId>
                     <autoPublish>false</autoPublish>
                     <waitUntil>validated</waitUntil>
                 </configuration>
