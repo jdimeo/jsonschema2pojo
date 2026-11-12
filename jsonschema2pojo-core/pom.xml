@@ -5,7 +5,7 @@
     <parent>
         <artifactId>jsonschema2pojo</artifactId>
         <groupId>org.jsonschema2pojo</groupId>
-        <version>1.3.4-ci</version>
+        <version>1.3.5-ci-SNAPSHOT</version>
     </parent>
 
     <artifactId>jsonschema2pojo-core</artifactId>
