@@ -477,6 +477,9 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
      */
     @Parameter(property = "jsonschema2pojo.initializeCollections", defaultValue = "true")
     private boolean initializeCollections = true;
+    
+    @Parameter(property = "jsonschema2pojo.initializeObjects", defaultValue = "false")
+    private boolean initializeObjects = false;
 
     /**
      * List of file patterns to include.
@@ -1047,6 +1050,11 @@ public class Jsonschema2PojoMojo extends AbstractMojo implements GenerationConfi
     @Override
     public boolean isInitializeCollections() {
         return initializeCollections;
+    }
+    
+    @Override
+    public boolean isInitializeObjects() {
+    	return initializeObjects;
     }
 
     boolean filteringEnabled() {

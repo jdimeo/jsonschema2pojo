@@ -67,6 +67,7 @@ public class JsonSchemaExtension implements GenerationConfig {
   boolean includeToString
   String[] toStringExcludes
   boolean initializeCollections
+  boolean initializeObjects
   String outputEncoding
   boolean parcelable
   boolean serializable
@@ -138,6 +139,7 @@ public class JsonSchemaExtension implements GenerationConfig {
     serializable = false
     fileFilter = new AllFileFilter()
     initializeCollections = true
+    initializeObjects = false
     classNamePrefix = ''
     classNameSuffix = ''
     fileExtensions = [] as String[]
@@ -267,6 +269,7 @@ public class JsonSchemaExtension implements GenerationConfig {
        |parcelable = ${parcelable}
        |serializable = ${serializable}
        |initializeCollections = ${initializeCollections}
+       |initializeObjects = ${initializeObjects}
        |classNamePrefix = ${classNamePrefix}
        |classNameSuffix = ${classNameSuffix}
        |fileExtensions = ${Arrays.toString(fileExtensions)}
